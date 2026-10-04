@@ -54,4 +54,4 @@ def test_no_em_dashes_anywhere():
 
 
 def test_changelog_has_dated_release():
-    assert "## [0.1.0] - 2026-10-05" in (ROOT / "CHANGELOG.md").read_text()
+    assert "## [0.1.0] - 2026-10-04" in (ROOT / "CHANGELOG.md").read_text()
