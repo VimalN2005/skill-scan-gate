@@ -103,7 +103,10 @@ jobs:
           assert load("baselined.sarif") == [], "baselined SARIF has results"
           secrets = open("secrets.sarif").read()
           assert json.loads(secrets)["runs"][0]["results"], "secrets SARIF has no results"
-          leaked = [k for k, v in tokens().items() if v in secrets]
+          # SSG501 evidence is the PEM "BEGIN ... PRIVATE KEY" marker by design (not key material),
+          # as in tests/test_secrets.py; the key body must still never appear.
+          leaked = [k for k, v in tokens().items() if k != "private_key_header" and v in secrets]
+          assert "not-a-key" not in secrets, "private key body in SARIF"
           assert not leaked, f"unredacted values in SARIF: {leaked}"
           uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in load("planted.sarif")}
           assert all(u.startswith("tests/fixtures/fixture-planted/") for u in uris), uris
