@@ -1,0 +1,118 @@
+name: Action self-test
+
+# Runs the composite Action from this checkout (uses: ./) against the repository's own fixtures:
+#   - fixture-planted must fail the gate (non-zero exit) and still write SARIF with results;
+#   - fixture-clean must pass with zero findings at the lowest threshold;
+#   - a secret-shaped fixture, generated at run time and never committed, must fail;
+#   - the planted fixture with a baseline of its own findings must pass.
+# SARIF upload is off here so planted findings never reach this repository's Security tab.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-test:
+    name: Run the Action on the fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Planted fixture (gate must fail)
+        id: planted
+        uses: ./
+        continue-on-error: true
+        with:
+          path: tests/fixtures/fixture-planted
+          fail-on: high
+          upload-sarif: "false"
+          sarif-file: planted.sarif
+
+      - name: Clean fixture (gate must pass at the lowest threshold)
+        id: clean
+        uses: ./
+        with:
+          path: tests/fixtures/fixture-clean
+          fail-on: low
+          upload-sarif: "false"
+          sarif-file: clean.sarif
+
+      - name: Build the secret-shaped fixture (generated, never committed)
+        run: python3 tests/make_secret_fixture.py "$RUNNER_TEMP/fixture-secrets"
+
+      - name: Secret-shaped fixture (gate must fail)
+        id: secrets
+        uses: ./
+        continue-on-error: true
+        with:
+          path: ${{ runner.temp }}/fixture-secrets
+          fail-on: high
+          upload-sarif: "false"
+          sarif-file: secrets.sarif
+
+      - name: Baseline the planted fixture
+        run: PYTHONPATH=src python3 -m skill_scan_gate baseline tests/fixtures/fixture-planted --out "$RUNNER_TEMP/planted-baseline.json"
+
+      - name: Planted fixture with its baseline (gate must pass)
+        id: baselined
+        uses: ./
+        with:
+          path: tests/fixtures/fixture-planted
+          fail-on: low
+          baseline: ${{ runner.temp }}/planted-baseline.json
+          upload-sarif: "false"
+          sarif-file: baselined.sarif
+
+      - name: Check outcomes, outputs and SARIF
+        env:
+          PLANTED_OUTCOME: ${{ steps.planted.outcome }}
+          CLEAN_OUTCOME: ${{ steps.clean.outcome }}
+          CLEAN_COUNT: ${{ steps.clean.outputs.finding-count }}
+          CLEAN_GATE: ${{ steps.clean.outputs.gate }}
+          SECRETS_OUTCOME: ${{ steps.secrets.outcome }}
+          BASELINED_OUTCOME: ${{ steps.baselined.outcome }}
+          BASELINED_COUNT: ${{ steps.baselined.outputs.finding-count }}
+          BASELINED_SUPPRESSED: ${{ steps.baselined.outputs.suppressed-count }}
+        run: |
+          set -eu
+          test "$PLANTED_OUTCOME" = "failure"
+          test "$CLEAN_OUTCOME" = "success"
+          test "$CLEAN_COUNT" = "0"
+          test "$CLEAN_GATE" = "pass"
+          test "$SECRETS_OUTCOME" = "failure"
+          test "$BASELINED_OUTCOME" = "success"
+          test "$BASELINED_COUNT" = "0"
+          test "$BASELINED_SUPPRESSED" -gt 0
+          python3 - <<'PY'
+          import json, sys
+          sys.path.insert(0, "tests")
+          from make_secret_fixture import tokens
+          def load(p):
+              d = json.load(open(p))
+              assert d["version"] == "2.1.0", p
+              return d["runs"][0]["results"]
+          assert load("planted.sarif"), "planted SARIF has no results"
+          assert load("clean.sarif") == [], "clean SARIF has results"
+          assert load("baselined.sarif") == [], "baselined SARIF has results"
+          secrets = open("secrets.sarif").read()
+          assert json.loads(secrets)["runs"][0]["results"], "secrets SARIF has no results"
+          leaked = [k for k, v in tokens().items() if v in secrets]
+          assert not leaked, f"unredacted values in SARIF: {leaked}"
+          uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in load("planted.sarif")}
+          assert all(u.startswith("tests/fixtures/fixture-planted/") for u in uris), uris
+          print("self-test checks passed")
+          PY
+
+      - name: CLI exit codes from the checkout
+        run: |
+          set +e
+          PYTHONPATH=src python3 -m skill_scan_gate scan tests/fixtures/fixture-planted > /dev/null; test $? -eq 1 || exit 1
+          PYTHONPATH=src python3 -m skill_scan_gate scan tests/fixtures/fixture-clean --fail-on low > /dev/null; test $? -eq 0 || exit 1
+          PYTHONPATH=src python3 -m skill_scan_gate scan does-not-exist > /dev/null 2>&1; test $? -eq 2 || exit 1

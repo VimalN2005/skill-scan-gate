@@ -1,0 +1,97 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "skill-scan-gate"
+version = "0.1.0"
+description = "CI gate for Claude Code skills and plugins: scans for instruction-override text, exfiltration patterns, dangerous hook commands, unpinned MCP servers and secret-shaped strings, writes SARIF, and fails the build above a severity threshold."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Muhammad Basit Ali" }]
+keywords = [
+  "claude-code",
+  "claude-code-plugins",
+  "claude-code-skills",
+  "agent-skills",
+  "ci",
+  "github-actions",
+  "sarif",
+  "code-scanning",
+  "prompt-injection",
+  "mcp",
+  "hooks",
+  "agent-security",
+  "supply-chain-security",
+  "secret-scanning",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5",
+  "pyyaml>=6.0",
+]
+
+[project.scripts]
+skill-scan-gate = "skill_scan_gate.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/basitalisandhu/skill-scan-gate"
+Repository = "https://github.com/basitalisandhu/skill-scan-gate"
+Issues = "https://github.com/basitalisandhu/skill-scan-gate/issues"
+Changelog = "https://github.com/basitalisandhu/skill-scan-gate/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/basitalisandhu/skill-scan-gate/blob/main/docs/rules.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/skill_scan_gate"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/skill_scan_gate/**",
+  "docs/**",
+  "tests/**",
+  "action.yml",
+  "README.md",
+  "LICENSE",
+  "CHANGELOG.md",
+  "pyproject.toml",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["RUF012", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["skill_scan_gate"]
+known-local-folder = ["conftest", "make_secret_fixture"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

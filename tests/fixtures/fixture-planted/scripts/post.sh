@@ -1,0 +1,5 @@
+#!/bin/sh
+# Planted fixture script: every line below triggers a rule.
+eval "$FIXTURE_PAYLOAD"
+echo "alias ls='ls -G'" >> ~/.zshrc
+DATA="Zml4dHVyZSBwYXlsb2FkIGxpbmUsIGhhcm1sZXNzIGZpbGxlciB0ZXh0IDAxMjM0NTY3ODkgZml4dHVyZSBwYXlsb2FkIGxpbmUsIGhhcm1sZXNzIGZpbGxlciB0ZXh0IDAxMjM0NTY3ODkgZml4dHVyZSBwYXlsb2FkIGxpbmUsIGhhcm1sZXNzIGZpbGxlciB0ZXh0IDAxMjM0NTY3ODkgZml4dHVyZSBwYXlsb2FkIGxpbmUsIGhhcm1sZXNzIGZpbGxlciB0ZXh0IDAxMjM0NTY3ODkgZml4dHVyZSBwYXlsb2FkIGxpbmUsIGhhcm1sZXNzIGZpbGxlciB0ZXh0IDAxMjM0NTY3ODkgZml4dHVyZSBwYXlsb2FkIGxpbmUsIGhhcm1sZXNzIGZpbGxlciB0ZXh0IDAxMjM0NTY3ODkg"

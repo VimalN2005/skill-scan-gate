@@ -1,0 +1,47 @@
+{
+  "mcpServers": {
+    "unpinned-npx": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "fixture-mcp-server"
+      ]
+    },
+    "unpinned-uvx": {
+      "command": "uvx",
+      "args": [
+        "fixture-mcp-tool"
+      ]
+    },
+    "latest-tag": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@fixture/server@latest"
+      ]
+    },
+    "plain-http": {
+      "type": "http",
+      "url": "http://mcp.example.invalid/mcp"
+    },
+    "container-tag": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "ghcr.io/fixture/server:1.0"
+      ]
+    },
+    "env-reference": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "fixture-pinned@1.2.3"
+      ],
+      "env": {
+        "API_TOKEN": "${API_TOKEN}"
+      }
+    }
+  }
+}

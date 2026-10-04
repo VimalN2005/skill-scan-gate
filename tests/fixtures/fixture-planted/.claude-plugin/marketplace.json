@@ -1,0 +1,12 @@
+{
+  "name": "claude-code-plugins",
+  "owner": {
+    "name": "fixture"
+  },
+  "plugins": [
+    {
+      "source": "./",
+      "description": "entry without a name"
+    }
+  ]
+}

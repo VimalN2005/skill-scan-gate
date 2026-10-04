@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: python -m pip install -e ".[dev]" build
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Test
+        run: python -m pytest -q
+      - name: Gate the fixtures from the command line
+        run: |
+          set +e
+          skill-scan-gate scan tests/fixtures/fixture-planted --format sarif --output planted.sarif; test $? -eq 1 || exit 1
+          set -e
+          skill-scan-gate scan tests/fixtures/fixture-clean --fail-on low
+          python -c "import json; d=json.load(open('planted.sarif')); assert d['version']=='2.1.0' and d['runs'][0]['results']"
+      - name: Scan this repository (fixtures excluded)
+        run: skill-scan-gate scan . --exclude 'tests/fixtures/**' --fail-on low
+      - name: Build and smoke-test the wheel
+        run: |
+          python -m build
+          python -m pip install --force-reinstall dist/*.whl
+          skill-scan-gate --version
+          skill-scan-gate rules > /dev/null
+
+  container-build:
+    name: Build the container image and run it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image, print --help and scan the fixtures from a mount
+        run: |
+          docker build --build-arg VERSION=ci -t skill-scan-gate:ci .
+          docker run --rm skill-scan-gate:ci --help > help.txt && grep "^usage: skill-scan-gate" help.txt
+          docker run --rm skill-scan-gate:ci --version
+          test "$(docker run --rm --entrypoint id skill-scan-gate:ci -u)" = "1000"
+          docker run --rm -v "$PWD/tests/fixtures/fixture-clean:/work:ro" skill-scan-gate:ci scan . --fail-on low
+          set +e
+          docker run --rm -v "$PWD/tests/fixtures/fixture-planted:/work:ro" skill-scan-gate:ci scan . > /dev/null; test $? -eq 1

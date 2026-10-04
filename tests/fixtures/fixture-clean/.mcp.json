@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "notes-index": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@fixture/notes-index@1.2.3"
+      ],
+      "env": {
+        "NOTES_TOKEN": "${NOTES_TOKEN}"
+      }
+    },
+    "notes-search": {
+      "command": "uvx",
+      "args": [
+        "fixture-notes-search==0.4.1"
+      ]
+    },
+    "notes-remote": {
+      "type": "http",
+      "url": "https://notes.example.org/mcp",
+      "headers": {
+        "Authorization": "Bearer ${NOTES_REMOTE_TOKEN}"
+      }
+    },
+    "notes-local": {
+      "type": "http",
+      "url": "http://127.0.0.1:8765/mcp"
+    },
+    "notes-container": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "ghcr.io/fixture/notes@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      ]
+    }
+  }
+}
