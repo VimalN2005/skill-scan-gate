@@ -76,6 +76,7 @@ class ScanResult:
     suppressed_baseline: list[Finding] = field(default_factory=list)
     suppressed_allow: list[Finding] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    blob_min: int = 200
 
     def counts(self) -> dict[str, int]:
         return {s: sum(1 for f in self.findings if f.severity == s) for s in (HIGH, MEDIUM, LOW)}
@@ -155,9 +156,20 @@ def parse_front_matter(text: str) -> dict[str, tuple[str, int]] | None:
 
 
 class Scanner:
-    def __init__(self, root: Path, exclude: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        root: Path,
+        exclude: list[str] | None = None,
+        blob_min: int = P.BLOB_MIN,
+    ) -> None:
         self.root = root
         self.exclude = exclude or []
+        self.blob_min = blob_min
+        if blob_min == P.BLOB_MIN:
+            self._b64_blob = P.BASE64_BLOB
+            self._hex_blob = P.HEX_BLOB
+        else:
+            self._b64_blob, self._hex_blob = P.blob_patterns(blob_min)
         self.findings: list[Finding] = []
         self.errors: list[str] = []
         self.files: list[str] = []
@@ -261,12 +273,12 @@ class Scanner:
                     self.add("SSG201", rel, i, line)
                 if P.capture_endpoint(url):
                     self.add("SSG204", rel, i, line)
-            for m in P.BASE64_BLOB.finditer(line):
+            for m in self._b64_blob.finditer(line):
                 if P.looks_like_blob(m.group(0)):
                     self.add("SSG203", rel, i, line, f"{len(m.group(0))}-character encoded run")
                     break
             else:
-                hm = P.HEX_BLOB.search(line)
+                hm = self._hex_blob.search(line)
                 if hm:
                     self.add("SSG203", rel, i, line, f"{len(hm.group(0))}-character hex run")
             if i in skip_secret_lines:
@@ -663,12 +675,16 @@ def _reads(snippet: str) -> bool:
     return bool(_READ_VERBS.search(snippet))
 
 
-def scan(root: Path, exclude: list[str] | None = None) -> ScanResult:
+def scan(
+    root: Path,
+    exclude: list[str] | None = None,
+    blob_min: int = P.BLOB_MIN,
+) -> ScanResult:
     """Scan a directory. A path that is not a directory is reported as an error, not a finding."""
     if not root.is_dir():
-        return ScanResult(root, [], [], [f"not a directory: {root}"])
-    s = Scanner(root, exclude).run()
-    return ScanResult(root, s.findings, sorted(s.files), s.errors)
+        return ScanResult(root, [], [], [f"not a directory: {root}"], blob_min=blob_min)
+    s = Scanner(root, exclude, blob_min=blob_min).run()
+    return ScanResult(root, s.findings, sorted(s.files), s.errors, blob_min=blob_min)
 
 
 __all__ = ["Finding", "ScanResult", "Scanner", "fingerprint", "hook_commands", "parse_front_matter", "scan"]

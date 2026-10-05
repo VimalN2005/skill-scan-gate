@@ -78,6 +78,15 @@ UPLOAD = re.compile(
 BLOB_MIN = 200
 BASE64_BLOB = re.compile(r"[A-Za-z0-9+/]{" + str(BLOB_MIN) + r",}={0,2}")
 HEX_BLOB = re.compile(r"\b[0-9a-fA-F]{" + str(BLOB_MIN + 56) + r",}\b")
+
+
+def blob_patterns(blob_min: int = BLOB_MIN) -> tuple[re.Pattern[str], re.Pattern[str]]:
+    """Return compiled (base64, hex) regex patterns for a given minimum base64 blob length."""
+    b64 = re.compile(r"[A-Za-z0-9+/]{" + str(blob_min) + r",}={0,2}")
+    hex_blob = re.compile(r"\b[0-9a-fA-F]{" + str(blob_min + 56) + r",}\b")
+    return b64, hex_blob
+
+
 CAPTURE_HOSTS = (
     "webhook.site",
     "requestbin",

@@ -125,3 +125,24 @@ def test_ssg201_markdown_link_targets_flagged(skill_rules, snippet):
 )
 def test_ssg204_markdown_link_targets_flagged(skill_rules, snippet):
     assert "SSG204" in skill_rules(snippet)
+
+
+def test_ssg203_configurable_blob_threshold(tree):
+    from skill_scan_gate.scanner import scan
+
+    from conftest import GOOD_SKILL
+
+    blob_120 = base64.b64encode(bytes(range(90))).decode()
+    path = tree({"skills/s/SKILL.md": GOOD_SKILL + f'DATA="{blob_120}"\n'})
+
+    # Default (200): not flagged
+    assert "SSG203" not in [f.rule for f in scan(path).findings]
+
+    # Lowered threshold (100): flagged
+    assert "SSG203" in [f.rule for f in scan(path, blob_min=100).findings]
+
+    # Raised threshold on large blob
+    large_blob = base64.b64encode(bytes(range(200))).decode()
+    path_large = tree({"skills/s/SKILL.md": GOOD_SKILL + f'DATA="{large_blob}"\n'})
+    assert "SSG203" in [f.rule for f in scan(path_large, blob_min=200).findings]
+    assert "SSG203" not in [f.rule for f in scan(path_large, blob_min=400).findings]

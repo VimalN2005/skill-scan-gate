@@ -56,6 +56,7 @@ def test_json_output(capsys):
     main(["scan", str(PLANTED), "--format", "json", "--fail-on", "high"])
     doc = json.loads(capsys.readouterr().out)
     assert doc["gate"] == "fail"
+    assert doc["blobMin"] == 200
     assert doc["summary"]["total"] == len(doc["findings"])
     assert {"rule", "severity", "file", "line", "remediation", "fingerprint"} <= set(doc["findings"][0])
 
@@ -125,3 +126,32 @@ def test_version_flag(capsys):
         main(["--version"])
     assert e.value.code == 0
     assert __version__ in capsys.readouterr().out
+
+
+def test_blob_min_cli_flag(tmp_path, capsys):
+    import base64
+
+    from conftest import GOOD_SKILL, write_tree
+
+    blob_100 = base64.b64encode(bytes(range(75))).decode()
+    repo = write_tree(tmp_path / "r", {"skills/s/SKILL.md": GOOD_SKILL + f'DATA="{blob_100}"\n'})
+
+    # Default 200: not flagged
+    assert main(["scan", str(repo), "--format", "json"]) == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["blobMin"] == 200
+    assert not any(f["rule"] == "SSG203" for f in doc["findings"])
+
+    # Lowered threshold 64: flagged
+    assert main(["scan", str(repo), "--format", "json", "--blob-min", "64", "--fail-on", "medium"]) == 1
+    doc64 = json.loads(capsys.readouterr().out)
+    assert doc64["blobMin"] == 64
+    assert any(f["rule"] == "SSG203" for f in doc64["findings"])
+
+    # Raised threshold on large blob: suppresses finding
+    blob_220 = base64.b64encode(bytes(range(165))).decode()
+    repo2 = write_tree(tmp_path / "r2", {"skills/s/SKILL.md": GOOD_SKILL + f'DATA="{blob_220}"\n'})
+    assert main(["scan", str(repo2), "--blob-min", "300"]) == 0
+
+    # Below minimum 64: usage error (exit code 2)
+    assert main(["scan", str(repo), "--blob-min", "63"]) == 2

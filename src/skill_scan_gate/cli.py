@@ -56,6 +56,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--baseline", type=Path, help="baseline file from `skill-scan-gate baseline`; only new findings count"
     )
+    s.add_argument(
+        "--blob-min",
+        type=int,
+        default=200,
+        metavar="N",
+        help="minimum base64 blob length for SSG203 (default: 200, minimum: 64)",
+    )
     s.add_argument("--allow", type=Path, help="allowlist file (see docs/false-positives.md)")
     s.add_argument("--exclude", action="append", default=[], metavar="GLOB", help="path glob to skip (repeatable)")
     s.add_argument("--output", "-o", type=Path, help="write the report here instead of stdout")
@@ -85,8 +92,14 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def run_scan(path: Path, exclude: list[str], baseline: Path | None, allow: Path | None) -> ScanResult:
-    result = scan(path, exclude)
+def run_scan(
+    path: Path,
+    exclude: list[str],
+    baseline: Path | None,
+    allow: Path | None,
+    blob_min: int = 200,
+) -> ScanResult:
+    result = scan(path, exclude, blob_min=blob_min)
     if allow is not None:
         entries = load_allowlist(allow)
         result.findings, result.suppressed_allow = apply_allowlist(result.findings, entries)
@@ -107,11 +120,14 @@ def _uri_prefix(path: Path, sarif_root: Path | None) -> str:
 
 
 def _cmd_scan(a: argparse.Namespace) -> int:
+    if a.blob_min < 64:
+        print(f"skill-scan-gate: --blob-min must be at least 64 (got {a.blob_min})", file=sys.stderr)
+        return EXIT_ERROR
     if not a.path.is_dir():
         print(f"skill-scan-gate: not a directory: {a.path}", file=sys.stderr)
         return EXIT_ERROR
     try:
-        result = run_scan(a.path, a.exclude, a.baseline, a.allow)
+        result = run_scan(a.path, a.exclude, a.baseline, a.allow, blob_min=a.blob_min)
     except SuppressionError as e:
         print(f"skill-scan-gate: {e}", file=sys.stderr)
         return EXIT_ERROR

@@ -73,6 +73,7 @@ def to_json(result: ScanResult, fail_on: str) -> dict[str, Any]:
         "filesScanned": len(result.files),
         "failOn": fail_on,
         "gate": gate(result, fail_on),
+        "blobMin": result.blob_min,
         "summary": {
             "total": len(result.findings),
             **c,
