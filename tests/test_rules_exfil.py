@@ -4,6 +4,10 @@ import base64
 
 import pytest
 
+from skill_scan_gate.scanner import scan
+
+from conftest import GOOD_SKILL
+
 
 @pytest.mark.parametrize(
     "line",
@@ -128,10 +132,6 @@ def test_ssg204_markdown_link_targets_flagged(skill_rules, snippet):
 
 
 def test_ssg203_configurable_blob_threshold(tree):
-    from skill_scan_gate.scanner import scan
-
-    from conftest import GOOD_SKILL
-
     blob_120 = base64.b64encode(bytes(range(90))).decode()
     path = tree({"skills/s/SKILL.md": GOOD_SKILL + f'DATA="{blob_120}"\n'})
 

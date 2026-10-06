@@ -104,7 +104,7 @@ Remediation: Remove the upload, or send only a named, reviewed file to a host yo
 
 **Long encoded blob.** Severity: medium
 
-What it catches: A run of 200 or more base64 characters (with digits, upper and lower case and at least 16 distinct characters) or 256 or more hex characters on one line. Encoded blobs hide content from review. Repetitive strings and hashes are not reported.
+What it catches: A run of 200 or more base64 characters (with digits, upper and lower case and at least 16 distinct characters) or 256 or more hex characters on one line (the base64 threshold can be changed with `scan --blob-min N`, minimum 64, with hex staying 56 characters longer). Encoded blobs hide content from review. Repetitive strings and hashes are not reported.
 
 Remediation: Ship readable source instead of base64 or hex blobs, or move generated data to a reviewed asset file.
 

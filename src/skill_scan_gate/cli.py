@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .patterns import BLOB_MIN
 from .report import gate, render_json, render_markdown, render_sarif, render_table, summary_line
 from .rules import RULES, SEVERITIES
 from .scanner import ScanResult, scan
@@ -59,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--blob-min",
         type=int,
-        default=200,
+        default=BLOB_MIN,
         metavar="N",
         help="minimum base64 blob length for SSG203 (default: 200, minimum: 64)",
     )
@@ -84,6 +85,13 @@ def build_parser() -> argparse.ArgumentParser:
     b = sub.add_parser("baseline", help="snapshot the current findings so only new ones fail")
     b.add_argument("path", type=Path)
     b.add_argument("--out", type=Path, required=True, help="baseline file to write")
+    b.add_argument(
+        "--blob-min",
+        type=int,
+        default=BLOB_MIN,
+        metavar="N",
+        help="minimum base64 blob length for SSG203 (default: 200, minimum: 64)",
+    )
     b.add_argument("--exclude", action="append", default=[], metavar="GLOB")
     b.add_argument("--allow", type=Path, help="leave allowlisted findings out of the baseline")
 
@@ -97,7 +105,7 @@ def run_scan(
     exclude: list[str],
     baseline: Path | None,
     allow: Path | None,
-    blob_min: int = 200,
+    blob_min: int = BLOB_MIN,
 ) -> ScanResult:
     result = scan(path, exclude, blob_min=blob_min)
     if allow is not None:
@@ -160,11 +168,14 @@ def _cmd_scan(a: argparse.Namespace) -> int:
 
 
 def _cmd_baseline(a: argparse.Namespace) -> int:
+    if a.blob_min < 64:
+        print(f"skill-scan-gate: --blob-min must be at least 64 (got {a.blob_min})", file=sys.stderr)
+        return EXIT_ERROR
     if not a.path.is_dir():
         print(f"skill-scan-gate: not a directory: {a.path}", file=sys.stderr)
         return EXIT_ERROR
     try:
-        result = run_scan(a.path, a.exclude, None, a.allow)
+        result = run_scan(a.path, a.exclude, None, a.allow, blob_min=a.blob_min)
     except SuppressionError as e:
         print(f"skill-scan-gate: {e}", file=sys.stderr)
         return EXIT_ERROR

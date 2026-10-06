@@ -1,5 +1,4 @@
-"""Command line: formats, exit codes and side outputs."""
-
+import base64
 import json
 import subprocess
 import sys
@@ -10,7 +9,7 @@ from skill_scan_gate import __version__
 from skill_scan_gate.cli import main
 from skill_scan_gate.rules import RULES
 
-from conftest import CLEAN, PLANTED, ROOT
+from conftest import CLEAN, GOOD_SKILL, PLANTED, ROOT, write_tree
 
 
 @pytest.mark.parametrize(
@@ -129,10 +128,6 @@ def test_version_flag(capsys):
 
 
 def test_blob_min_cli_flag(tmp_path, capsys):
-    import base64
-
-    from conftest import GOOD_SKILL, write_tree
-
     blob_100 = base64.b64encode(bytes(range(75))).decode()
     repo = write_tree(tmp_path / "r", {"skills/s/SKILL.md": GOOD_SKILL + f'DATA="{blob_100}"\n'})
 
@@ -155,3 +150,18 @@ def test_blob_min_cli_flag(tmp_path, capsys):
 
     # Below minimum 64: usage error (exit code 2)
     assert main(["scan", str(repo), "--blob-min", "63"]) == 2
+
+
+def test_baseline_honours_blob_min(tmp_path):
+    blob_100 = base64.b64encode(bytes(range(75))).decode()
+    repo = write_tree(tmp_path / "r", {"skills/s/SKILL.md": GOOD_SKILL + f'DATA="{blob_100}"\n'})
+    base_file = tmp_path / "baseline.json"
+
+    # Baseline with --blob-min 100 captures the blob
+    assert main(["baseline", str(repo), "--out", str(base_file), "--blob-min", "100"]) == 0
+
+    # Scan with same blob-min and baseline suppresses it
+    assert main(["scan", str(repo), "--baseline", str(base_file), "--blob-min", "100", "--fail-on", "medium"]) == 0
+
+    # Baseline below 64 is usage error
+    assert main(["baseline", str(repo), "--out", str(base_file), "--blob-min", "63"]) == 2

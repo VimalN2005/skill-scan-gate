@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `scan --blob-min N` and `baseline --blob-min N`: configurable minimum length for SSG203 base64 blob detection (default 200, minimum 64; hex threshold stays 56 characters longer); threshold is recorded in the JSON report as `blobMin`.
+
 ## [0.1.0] - 2026-10-04
 
 ### Added

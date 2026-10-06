@@ -190,6 +190,7 @@ Severity maps to SARIF levels (high = error, medium = warning, low = note) and t
 
 - `skill-scan-gate baseline . --out FILE` snapshots today's findings; `scan --baseline FILE` then fails only on new ones. Fingerprints hash the rule, the file and the line text, not the line number, so unrelated edits do not resurface old findings.
 - `--allow FILE` takes documented exceptions, one per line: `SSG204 skills/notify/SKILL.md  # our own webhook`. Entries that match nothing are reported.
+- `--blob-min N` (default 200, minimum 64) sets the base64 threshold for SSG203 (hex stays 56 longer), for repositories shipping legitimate inline data.
 - There are no inline ignore comments, on purpose: an exception should be a visible change to a file you can protect with CODEOWNERS, not a comment inside the content being checked.
 
 Details: [docs/false-positives.md](docs/false-positives.md).
